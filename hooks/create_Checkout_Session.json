@@ -1,0 +1,206 @@
+{
+  "name": "Create Checkout Session",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "subscription/create",
+        "responseMode": "lastNode",
+        "options": {
+          "preflight": {
+            "enabled": true,
+            "response": {
+              "headers": {
+                "entries": [
+                  {
+                    "name": "Access-Control-Allow-Headers",
+                    "value": "*"
+                  },
+                  {
+                    "name": "Access-Control-Allow-Methods",
+                    "value": "GET, HEAD, POST, PUT, DELETE, OPTIONS"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        300
+      ],
+      "id": "ff9e88e5-5f5a-4c1e-8b3a-2e7d6c5b4a1f",
+      "webhookId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+    },
+    {
+      "parameters": {
+        "functionCode": "const plan = $json.body.plan;\n// These are your actual Stripe Price IDs\nconst monthlyPrice = \"price_1SC7E22WCo9sQBt0SXR2wkE0\";\nconst yearlyPrice = \"price_1SC7GI2WCo9sQBt0D29pUrFU\";\n\nif (!plan || ![\"monthly\",\"yearly\"].includes(plan)) {\n  throw new Error(\"Invalid plan. Must be 'monthly' or 'yearly'.\");\n}\n\nreturn [{\n  json: {\n    priceId: plan === \"yearly\" ? yearlyPrice : monthlyPrice,\n    email: $json.body.email,\n    user_id: $json.body.user_id\n  }\n}];"
+      },
+      "name": "Select Plan Price",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -350,
+        300
+      ],
+      "id": "a2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d"
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "requestMethod": "POST",
+        "url": "https://api.stripe.com/v1/checkout/sessions",
+        "responseFormat": "json",
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.STRIPE_SECRET_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "mode",
+              "value": "subscription"
+            },
+            {
+              "name": "line_items[0][price]",
+              "value": "={{ $json.priceId }}"
+            },
+            {
+              "name": "line_items[0][quantity]",
+              "value": "1"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "client_reference_id",
+              "value": "={{ $json.user_id }}"
+            },
+            {
+              "name": "success_url",
+              "value": "={{ $json.body.platform === 'web' ? 'https://rork.com/profile' : 'rork://profile' }}"
+            },
+            {
+              "name": "cancel_url",
+              "value": "={{ $json.body.platform === 'web' ? 'https://rork.com/profile' : 'rork://profile' }}"
+            }
+          ]
+        }
+      },
+      "name": "Create Checkout Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        300
+      ],
+      "id": "b3c4d5e6-f7g8-4h9i-a0j1-k2l3m4n5o6p7"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { checkoutUrl: $json.url } }];"
+      },
+      "name": "Format Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        150,
+        300
+      ],
+      "id": "c4d5e6f7-g8h9-4i0j-k1l2-m3n4o5p6q7r8"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Respond with URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        400,
+        300
+      ],
+      "id": "d5e6f7g8-h9i0-4j1k-l2m3-n4o5p6q7r8s9"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Select Plan Price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Plan Price": {
+      "main": [
+        [
+          {
+            "node": "Create Checkout Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Checkout Session": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond with URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e6f7g8h9-i0j1-4k2l-m3n4-o5p6q7r8s9t0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "subCheckoutFlow_v2",
+  "tags": []
+}

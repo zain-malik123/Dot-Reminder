@@ -1,0 +1,15 @@
+{
+  "cli": {
+  "appVersionSource": "local"
+},
+  "build": {
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_NO_DEV_SERVER": "1"
+      }
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "name": "Stripe Webhook Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "events": [
+          "checkout.session.completed"
+        ]
+      },
+      "name": "Stripe Trigger",
+      "type": "n8n-nodes-base.stripeTrigger",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        300
+      ],
+      "id": "a1b2c3d4-e5f6-4a7b-8c9d-1e2f3a4b5c6d",
+      "credentials": {
+        "stripeApi": {
+          "id": "YOUR_STRIPE_CREDENTIAL_ID",
+          "name": "Stripe account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "requestMethod": "GET",
+        "url": "https://api.stripe.com/v1/subscriptions/{{ $json.body.data.object.subscription }}",
+        "responseFormat": "json"
+      },
+      "name": "Fetch Stripe Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -350,
+        300
+      ],
+      "id": "b2c3d4e5-f6g7-4h8i-9j0k-2l3m4n5o6p7q",
+      "credentials": {
+        "headerAuth": {
+          "id": "YOUR_STRIPE_HEADER_AUTH_ID",
+          "name": "Stripe Secret Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const stripeSubscription = $json;\nconst checkoutSession = $items('Stripe Trigger')[0].json.body.data.object;\n\nconst userId = checkoutSession.client_reference_id;\nconst planInterval = stripeSubscription.items.data[0].plan.interval; // 'month' or 'year'\nconst periodEndTimestamp = stripeSubscription.current_period_end;\n\n// Convert Unix timestamp to ISO 8601 string for Supabase\nconst periodEndDate = new Date(periodEndTimestamp * 1000).toISOString();\n\nreturn [{\n  json: {\n    user_id: userId,\n    plan: planInterval === 'year' ? 'yearly' : 'monthly',\n    status: 'active',\n    period_end: periodEndDate\n  }\n}];"
+      },
+      "name": "Prepare DB Update",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        300
+      ],
+      "id": "c3d4e5f6-g7h8-4i9j-0k1l-3m4n5o6p7q8r"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "subscriptions",
+        "filtersUi": {
+          "conditions": [
+            {
+              "field": "user_id",
+              "value": "={{ $json.user_id }}"
+            }
+          ]
+        },
+        "columnsUi": {
+          "values": [
+            {
+              "column": "plan",
+              "value": "={{ $json.plan }}"
+            },
+            {
+              "column": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "column": "period_end",
+              "value": "={{ $json.period_end }}"
+            }
+          ]
+        }
+      },
+      "name": "Update Subscription in DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        150,
+        300
+      ],
+      "id": "d4e5f6g7-h8i9-4j0k-1l2m-4n5o6p7q8r9s",
+      "credentials": {
+        "supabaseApi": {
+          "id": "5LyBPjCYt2iSKcXJ",
+          "name": "Supabase account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Stripe Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Stripe Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stripe Subscription": {
+      "main": [
+        [
+          {
+            "node": "Prepare DB Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare DB Update": {
+      "main": [
+        [
+          {
+            "node": "Update Subscription in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f6g7h8i9-j0k1-4l2m-n3o4-p5q6r7s8t9u0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "stripeWebhookHandler_v1",
+  "tags": []
+}
