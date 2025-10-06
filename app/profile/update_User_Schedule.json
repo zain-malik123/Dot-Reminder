@@ -1,0 +1,111 @@
+{
+  "name": "Update User Schedule",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user/schedule/update",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -450,
+        300
+      ],
+      "webhookId": "your-unique-webhook-id-for-schedule"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "user_schedule",
+        "filtersUi": {
+          "conditions": [
+            {
+              "field": "user_id",
+              "value": "={{ $json.body.user_id }}"
+            }
+          ]
+        },
+        "columnsUi": {
+          "values": [
+            {
+              "column": "sleep_time",
+              "value": "={{ $json.body.sleep_time }}"
+            },
+            {
+              "column": "wake_up_time",
+              "value": "={{ $json.body.wake_up_time }}"
+            }
+          ]
+        }
+      },
+      "name": "Update Schedule in DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        300
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "5LyBPjCYt2iSKcXJ",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Respond with Updated Schedule",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        50,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Update Schedule in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Schedule in DB": {
+      "main": [
+        [
+          {
+            "node": "Respond with Updated Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "userScheduleUpdateFlow"
+}
